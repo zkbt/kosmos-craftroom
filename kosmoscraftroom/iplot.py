@@ -26,7 +26,7 @@ class iplot:
     An interactive (multipanel) plot, built on matplotlib GridSpec.
     """
 
-    def __init__(self, n_rows, n_cols, figsize=(8, 3), **kwargs):
+    def __init__(self, n_rows=1, n_cols=1, figsize=(7, 3), **kwargs):
         """
         Initialize an interactive multi-panel plot.
 
@@ -44,12 +44,20 @@ class iplot:
         # create a space for displaying outputs
         self.figure_output = widgets.Output()
         self.text_output = widgets.Output()
+        self.layout_output = widgets.AppLayout(
+            header=None,
+            left_sidebar=None,
+            center=self.figure_output,  # self.figure.canvas,
+            right_sidebar=self.text_output,
+            footer=None,
+        )
 
         # with self.figure_output:
         # create the figure
-        plt.ioff()
-        self.figure = plt.figure(figsize=figsize, constrained_layout=False)
-        self.figure.canvas.toolbar_position = "bottom"
+        # with plt.ioff():
+        with self.figure_output:
+            self.figure = plt.figure(figsize=figsize, constrained_layout=False)
+            # self.figure.canvas.toolbar_position = "bottom"
 
         # create the gridspec object
         self.gs = gridspec.GridSpec(n_rows, n_cols, figure=self.figure, **kwargs)
@@ -59,18 +67,13 @@ class iplot:
 
     def display(self):
         """ """
-        display(
-            widgets.AppLayout(
-                header=None,
-                left_sidebar=None,
-                center=self.figure.canvas,
-                right_sidebar=self.text_output,
-                footer=None,
-            )
-        )
+
+        plt.show()
+        display(self.layout_output)
 
     def __repr__(self):
-        return f"Interactive{self.gs}"
+        return self.layout_output
+        # return f"Interactive{self.gs}"
 
     def speak(self, x):
         """

@@ -85,7 +85,7 @@ class TUICatalog:
         ]
         return ", ".join(keywords)
 
-    def to_TUI(self, parallactic=True, output=False):
+    def to_TUI(self, parallactic=True, output=False, color="Black"):
         """
         Write this catalog out to a TUI-friendly format.
 
@@ -104,9 +104,9 @@ class TUICatalog:
         """
         filename = f"{self.name}.tui"
         if parallactic:
-            preamble = "CSys=ICRS; RotType=Horizon; RotAng=90"
+            preamble = f"CSys=ICRS; RotType=Horizon; RotAng=90; DispColor={color}"
         else:
-            preamble = "CSys=ICRS; RotType=Object; RotAng=0"
+            preamble = f"CSys=ICRS; RotType=Object; RotAng=0; DispColor={color}"
 
         lines = [
             f"""{self.make_three_columns(row)}   {self.make_tui_columns(row)}\n"""

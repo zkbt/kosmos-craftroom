@@ -73,9 +73,9 @@ class loupe(iplot):
         """
 
         if self.ok is None:
-            return np.ones_like(self.xaxis).astype(np.bool)
+            return np.ones_like(self.xaxis).astype(bool)
         else:
-            i = np.int(
+            i = int(
                 np.interp(self.crosshair["y"], self.yaxis, np.arange(len(self.yaxis)))
             )
             return self.ok[:, i]
@@ -87,9 +87,9 @@ class loupe(iplot):
         given the x-location of the current crosshair slice.
         """
         if self.ok is None:
-            return np.ones_like(self.yaxis).astype(np.bool)
+            return np.ones_like(self.yaxis).astype(bool)
         else:
-            i = np.int(
+            i = int(
                 np.interp(self.crosshair["x"], self.xaxis, np.arange(len(self.xaxis)))
             )
             return self.ok[i, :]
@@ -102,9 +102,7 @@ class loupe(iplot):
         """
 
         # figure out the column of the image associated with the crosshair's x
-        i = np.int(
-            np.interp(self.crosshair["x"], self.xaxis, np.arange(len(self.xaxis)))
-        )
+        i = int(np.interp(self.crosshair["x"], self.xaxis, np.arange(len(self.xaxis))))
         return self.image[i, :], self.yaxis
 
     @property
@@ -115,9 +113,7 @@ class loupe(iplot):
         """
 
         # figure out the column of the image associated with the crosshair's y
-        i = np.int(
-            np.interp(self.crosshair["y"], self.yaxis, np.arange(len(self.yaxis)))
-        )
+        i = int(np.interp(self.crosshair["y"], self.yaxis, np.arange(len(self.yaxis))))
         return self.xaxis, self.image[:, i]
 
     @property
@@ -402,7 +398,7 @@ class loupe(iplot):
                 self.widest = self.obs.widest
 
             try:
-                self.numberofapertures = np.int(self.input('How many apertures do you want?'))
+                self.numberofapertures = int(self.input('How many apertures do you want?'))
             except ValueError:
                 self.numberofapertures = self.obs.numberofapertures
 

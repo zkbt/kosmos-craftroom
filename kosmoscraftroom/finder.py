@@ -262,8 +262,14 @@ class Finder:
             # display(o)
 
     def show_lightcurves(self):
+        """
+        (Not yet really tested. Needs work + docstring + better labeling. Or maybe just use Autumn's?)
+        """
         from lightkurve import search_lightcurve
 
-        lcs = search_lightcurve(x)
-        lc = lcs[-1].download()
-        lc.normalize().plot()
+        for i in self.selected:
+            star = self.stars[i]
+            c = SkyCoord(ra=star["ra"], dec=star["dec"])
+            lcs = search_lightcurve(c)
+            lc = lcs[-1].download()
+            lc.normalize().plot()

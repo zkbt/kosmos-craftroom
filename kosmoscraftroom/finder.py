@@ -273,3 +273,93 @@ class Finder:
             lcs = search_lightcurve(c)
             lc = lcs[-1].download()
             lc.normalize().plot()
+
+    def show_slit(self, slit_center=None, rotation_angle=0, slit_width=7.1*u.arcsec, slit_length=6*u.arcmin):
+        """
+        Add graphical representation of slit on finder chart
+
+        Parameters
+        ----------
+        slit_center : SkyCoord object
+            Where to place the center of the slit on the field.
+        rotation_angle : int
+            Angle to rotate the slit [degree, default=0]
+        slit_width : float
+            Width of the slit [units]
+        slit_length : float
+            Length of the slit [units]
+        """
+        from astropy.coordinates.sky_coordinate import SkyCoord
+
+        # remove any previous patches (slits) every time we run this function.
+        patches = plt.gca().patches
+        for patch in patches[1:]:
+            patch.remove()
+
+        table = self.stars
+        ref_center = SkyCoord(table.meta['center'])
+
+        if slit_center is None:
+            slit_center = SkyCoord(f"{np.array(table[0]['ra'].value)} {np.array(table[0]['dec'].value)}",
+                                   frame="icrs", unit=(u.deg, u.deg))
+        def find_delta_radec(ra_center, ra, dec_center, dec):
+            """
+            Mini-function to account for the spherical projection when plottting.
+
+            Parameters
+            ----------
+            ra_center : float [units]
+                Right Ascension of the reference center of the field.
+            ra : float [units]
+                Right Ascension of object.
+            dec_center : float [units]
+                Declination of the reference center of the field.
+            dec : float [units]
+                Declination of object.
+            """
+            delta_ra = (ra - ra_center) * np.cos(dec)
+            delta_dec = (dec - dec_center)
+            try:
+                return delta_ra.arcmin, delta_dec.arcmin
+            except:
+                return np.ma.filled(delta_ra, np.nan).to_value('arcmin'), np.ma.filled(delta_dec, np.nan).to_value('arcmin')
+
+        # plot the slit on the finder chart
+        center_pos_of_slit = np.array(find_delta_radec(ref_center.ra, slit_center.ra, ref_center.dec, slit_center.dec))
+        xy = center_pos_of_slit - [0.5*slit_length.to_value("arcmin"), 0.5*slit_width.to_value("arcmin")]
+        slit = plt.Rectangle(xy=xy, width = slit_length.to_value("arcmin"), height = slit_width.to_value("arcmin"),
+                             alpha=0.3, angle=-rotation_angle, rotation_point='center')
+
+        # determine which stars will be within the slit:
+        ra = table['ra']
+        dec = table['dec']
+        dra, ddec = find_delta_radec(ref_center.ra, ra, ref_center.dec, dec)
+
+        star_positions = [[r, d] for r, d in zip(dra, ddec)]
+        stars_in_slit = slit.contains_points(star_positions)
+
+        if np.any(stars_in_slit):
+            print("The slit will overlap: ")
+            for i, (s_id, gmag, r, d) in enumerate(zip(table['source_id'], table['G_gaia_mag'], dra, ddec)):
+                if stars_in_slit[i]:
+                    print(f"{s_id}, G-mag {gmag:.2f} at $\Delta$RA: {r:.3f}', $\Delta$Dec:{d:.3f}'")
+
+            # highlight the stars that will overlap
+            # steal colors from Zach:
+            highlight_color = "darkorchid"
+            highlight_alpha = 0.5
+            plt.scatter(
+                dra[stars_in_slit],
+                ddec[stars_in_slit],  # plotted circle around star
+                s=100,
+                facecolor="none",
+                edgecolor=highlight_color,
+                alpha=highlight_alpha,
+            )
+        else:
+            print("""
+                  The slit will not overlap any stars on this finder chart. Maybe try changing the slit position,
+                  rotation angle, or the magnitude limits of the chart?
+                  """)
+
+        plt.gca().add_patch(slit)

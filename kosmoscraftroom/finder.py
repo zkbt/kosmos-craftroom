@@ -211,8 +211,11 @@ class Finder:
                             BP_minus_RP = (
                                 table[i]["BP_gaia_mag"] - table[i]["RP_gaia_mag"]
                             )
+                            source_id = table[i]["source_id"]
                             label = f"[{i}]"
-                            print(f"{label:>8}, G={G:.2f}, Bp-Rp={BP_minus_RP:.2f}")
+                            print(
+                                f"{label:>8}, G={G:.2f}, Bp-Rp={BP_minus_RP:.2f}, Gaia {source_id} "
+                            )
 
                         if len(self.selected) == 2:
                             i_A, i_B = self.selected.keys()
@@ -248,6 +251,18 @@ class Finder:
                             print(
                                 f"center-of-two-stars {kosmos_center_string} {kosmos_rotation_string}"
                             )
+                            for i_star in self.selected:
+                                this_star = table[i_star]
+                                ra_center = this_star["ra"]
+                                dec_center = this_star["dec"]
+                                this_center = SkyCoord(
+                                    ra=ra_center.filled(np.nan),
+                                    dec=dec_center.filled(np.nan),
+                                )
+                                center_string = this_center.to_string("hmsdms", sep=":")
+                                print(
+                                    f"[{i_star}] {center_string} {kosmos_rotation_string}"
+                                )
 
             # tell the figure to watch for "pick" events
             cid = fig.canvas.mpl_connect("pick_event", onpick)

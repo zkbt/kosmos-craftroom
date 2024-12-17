@@ -20,6 +20,7 @@ plugins:
   - mkdocs-jupyter:
       execute : True
       include_source : True
+      include: ["*.py", "*.ipynb", ".mp4"]
   - mkdocstrings:
       default_handler: python
       handlers:
@@ -38,7 +39,6 @@ plugins:
             show_if_no_docstring: False
             heading_level: 3
             show_bases: False
-      custom_templates: templates
   - exclude:
       glob:
         - "*.pdf"

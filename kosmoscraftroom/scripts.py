@@ -149,7 +149,7 @@ class ScriptWriter:
                     * binning_factor
                     * slit_factor
                 )
-
+                t = np.maximum(t, 0.5)
                 self.say(
                     f"# lamp {lamp}, slit={slit_name} ({i_slit+1}/{len(self.slits)}), disperser={disperser_name} ({i_disperser+1}/{len(self.dispersers)}),  {n} iterations"
                 )

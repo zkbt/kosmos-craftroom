@@ -8,17 +8,26 @@ class ScriptWriter:
     available_internal_lamps = ["neon", "krypton", "argon", "quartz"]
     available_truss_lamps = ["helium", "neon", "argon", "bright quartz", "dim quartz"]
 
-    # suggested reference 2" exposure times from https://www.apo.nmsu.edu/arc35m/Instruments/KOSMOS/userguide.html#4p2
-    suggested_internal_exposure_times = dict(
-        red=dict(neon=1, argon=2, krypton=1, quartz=15),
-        blue=dict(neon=2, argon=45, krypton=30, quartz=80),
-    )
+    # suggested reference 2"-slit exposure times from https://www.apo.nmsu.edu/arc35m/Instruments/KOSMOS/userguide.html#4p2
+    suggested_internal_exposure_times = {
+        "red": dict(neon=1, argon=2, krypton=1, quartz=5),
+        "blue": dict(neon=2, argon=45, krypton=30, quartz=25),
+        None: dict(neon=1, argon=1, krypton=1, quartz=1),
+    }
+
+    suggested_truss_exposure_times = {
+        "red": {"helium": 120, "neon": 60, "argon": 90, "bright quartz": 60},
+        "blue": {"helium": 120, "neon": 60, "argon": 120, "bright quartz": 240},
+        None: dict(helium=1, neon=1, argon=1, quartz=1),
+    }
     reference_slit_width = 2.0
 
     def __init__(
         self,
-        slits={"7.1-ctr": 1, "1.18-ctr": 2},
-        dispersers={"red": 6, "blue": 3},
+        slit_options={"7.1-ctr": 1, "1.18-ctr": 2},
+        disperser_options={None: 1, "red": 6, "blue": 3},
+        filter1_options={None: 1},
+        filter2_options={None: 1, "ND5": 6},
         binning=[2, 2],
         prefix="",
     ):
@@ -27,9 +36,9 @@ class ScriptWriter:
 
         Parameters
         ----------
-        slits : list
+        slit_options : list
             List of slit names for which calibrations are wanted.
-        dispersers : list
+        disperser_options : list
             List of disperser names for which calibrations are wanted.
         binning : list
             List of binning in x + y pixel directions ([xbinning, ybinning])
@@ -41,16 +50,28 @@ class ScriptWriter:
 
         self.lines = []
 
-        print("Assuming dispersers to calibrate are...")
-        for k, v in dispersers.items():
+        print("Assuming dispersers we might use are...")
+        for k, v in disperser_options.items():
             print(f" position #{v} = {k}")
-        self.dispersers = dispersers
+        self.disperser_options = disperser_options
         print()
 
-        print("Assuming slits to calibrate are...")
-        for k, v in slits.items():
+        print("Assuming slit we might use are...")
+        for k, v in slit_options.items():
             print(f" position #{v} = {k}")
-        self.slits = slits
+        self.slit_options = slit_options
+        print()
+
+        print("Assuming filter1 we might use are...")
+        for k, v in filter1_options.items():
+            print(f" position #{v} = {k}")
+        self.filter1_options = filter1_options
+        print()
+
+        print("Assuming filter1 we might use are...")
+        for k, v in filter2_options.items():
+            print(f" position #{v} = {k}")
+        self.filter2_options = filter2_options
         print()
 
         self.binning = binning
@@ -63,8 +84,8 @@ class ScriptWriter:
             """'
         disperser can be anything
         slit can be anything
-        filter1 must be empty
-        filter2 must be empty
+        filter1 can be anything
+        filter2 can be anything
         calibration stage can be anything
         binning can be anything
         neon/krypton/argon/quartz can be anything
@@ -74,7 +95,7 @@ class ScriptWriter:
         self.say(f"kosmos set rowBin={self.binning[0]} colBin={self.binning[1]}")
 
     def __repr__(self):
-        return f"<KOSMOS script for {len(self.dispersers)} dispersers + {len(self.slits)} slits>"
+        return f"<KOSMOS script for {len(self.disperser_options)} dispersers + {len(self.slit_options)} slits>"
 
     def say(self, s=""):
         """
@@ -112,7 +133,17 @@ class ScriptWriter:
         """
         return float(s.split("-")[0])
 
-    def take_lamps(self, lamp, n=3, note=""):
+    def take_lamp(
+        self,
+        lamp="quartz",
+        slit=None,
+        disperser=None,
+        filter1=None,
+        filter2=None,
+        n=3,
+        t=None,
+        note="",
+    ):
         """
         Take calibrations with lamps.
 
@@ -127,42 +158,144 @@ class ScriptWriter:
         """
 
         # turn off all lamps but the active one
-        self.comment(f"taking {n} {lamp} calibrations")
 
+        # pick the slit
+        slit_number = self.slit_options[slit]
+        if slit == None:
+            slit_factor = 1
+        else:
+            slit_width = self.guess_slit_width(slit)
+            slit_factor = self.reference_slit_width / slit_width
+
+        # pick the disperser
+        disperser_number = self.disperser_options[disperser]
+
+        # pick the filters
+        filter1_number = self.filter1_options[filter1]
+        filter2_number = self.filter2_options[filter2]
+
+        # set the exposure time, if not provided
+        if t is None:
+            binning_factor = 1 / np.prod(self.binning)
+            t = (
+                self.suggested_internal_exposure_times[disperser][lamp]
+                * binning_factor
+                * slit_factor
+            )
+
+        # don't allow exposure times shorter than 0.5s
+        t = np.maximum(t, 0.5)
+
+        # summarize observation
+        self.comment(
+            f"internal: {lamp=}, {slit=}, {disperser=}, {filter1=}, {filter2=}, {n=}, {t=}"
+        )
+
+        # put in the calibration stage + turn on the lamps
         s = "kosmos set calstage=in"
         for l in self.available_internal_lamps:
             onoff = {True: "on", False: "off"}[l == lamp]
             s += f" {l}={onoff}"
         self.say(s)
 
-        binning_factor = 1 / np.prod(self.binning)
+        # set up the slit and disperser and any filter(s)
+        self.say(
+            f"kosmos set slit={slit_number} disperser={disperser_number} filter1={filter1_number} filter2={filter2_number}"
+        )
+        filename = f"{self.prefix}/cals/internal-{disperser}-{slit}-{lamp}-{self.binning_string()}"
+        if note != "":
+            filename += f"-{note}"
 
-        for i_slit, slit_name in enumerate(self.slits):
-            slit_number = self.slits[slit_name]
-            slit_width = self.guess_slit_width(slit_name)
+        # take the exposure
+        self.say(
+            f'kosmosExpose flat time={t:.2f} n={n} name="{filename}" seq=nextByDir comment=""'
+        )
+
+        # turn off the lamps
+        self.comment("turning off internal lamps")
+        self.say(f"kosmos set neon=off krypton=off argon=off quartz=off")
+        self.say()
+
+    def take_truss_lamp(
+        self,
+        lamp="quartz",
+        slit=None,
+        disperser=None,
+        filter1=None,
+        filter2=None,
+        n=3,
+        t=None,
+        note="",
+    ):
+        """
+        Take calibrations with lamps.
+
+        Parameters
+        ----------
+        lamp : str
+            The lamp to turn on.
+        n : int
+            The number of iterations (per disperser, per slit).
+        note : str
+            An extra note to add to the filename.
+        """
+
+        # turn off all lamps but the active one
+
+        # pick the slit
+        slit_number = self.slit_options[slit]
+        if slit == None:
+            slit_factor = 1
+        else:
+            slit_width = self.guess_slit_width(slit)
             slit_factor = self.reference_slit_width / slit_width
 
-            for i_disperser, disperser_name in enumerate(self.dispersers):
-                disperser_number = self.dispersers[disperser_name]
-                t = (
-                    self.suggested_internal_exposure_times[disperser_name][lamp]
-                    * binning_factor
-                    * slit_factor
-                )
-                t = np.maximum(t, 0.5)
-                self.say(
-                    f"# lamp {lamp}, slit={slit_name} ({i_slit+1}/{len(self.slits)}), disperser={disperser_name} ({i_disperser+1}/{len(self.dispersers)}),  {n} iterations"
-                )
-                self.say(f"kosmos set slit={slit_number} disperser={disperser_number}")
-                filename = f"{self.prefix}{self.binning_string()}/cals/{disperser_name}-{slit_name}-{lamp}"
-                if note != "":
-                    filename += f"-{note}"
-                self.say(
-                    f'kosmosExpose flat time={t:.2f} n={n} name="{filename}" seq=nextByDir comment=""'
-                )
+        # pick the disperser
+        disperser_number = self.disperser_options[disperser]
 
-        self.comment("turning off lamps")
-        self.say(f"kosmos set calstage=in neon=off krypton=off argon=off quartz=off")
+        # pick the filters
+        filter1_number = self.filter1_options[filter1]
+        filter2_number = self.filter2_options[filter2]
+
+        # set the exposure time, if not provided
+        if t is None:
+            binning_factor = 1 / np.prod(self.binning)
+            t = (
+                self.suggested_truss_exposure_times[disperser][lamp]
+                * binning_factor
+                * slit_factor
+            )
+
+        # don't allow exposure times shorter than 0.5s
+        t = np.maximum(t, 0.5)
+
+        # summarize observation
+        self.comment(
+            f"truss: {lamp=}, {slit=}, {disperser=}, {filter1=}, {filter2=}, {n=}, {t=}"
+        )
+
+        # take out the calibration stage + turn on the lamp
+        truss_lamp_number = self.available_truss_lamps.index(lamp) + 1
+        self.say(f"tlamps on {truss_lamp_number}")
+        self.say("kosmos set calstage=out")
+
+        # set up the slit and disperser and any filter(s)
+        self.say(
+            f"kosmos set slit={slit_number} disperser={disperser_number} filter1={filter1_number} filter2={filter2_number}"
+        )
+        filename = f"{self.prefix}/cals/truss-{disperser}-{slit}-{lamp}-{self.binning_string()}"
+        if note != "":
+            filename += f"-{note}"
+
+        # take the exposure
+        self.say(
+            f'kosmosExpose flat time={t:.2f} n={n} name="{filename}" seq=nextByDir comment=""'
+        )
+
+        # turn off the lamps
+        self.comment("turning off truss lamps")
+        for truss_lamp_number in np.arange(len(self.available_truss_lamps)) + 1:
+            self.say(f"tlamps off {truss_lamp_number}")
         self.say()
 
     def take_science(self, n=3, n_chunk=3, note="", red=10, blue=10):
@@ -188,13 +321,13 @@ class ScriptWriter:
         self.comment(f"taking {n} science exposures")
 
         for i in range(n):
-            for i_disperser, disperser_name in enumerate(self.dispersers):
-                disperser_number = self.dispersers[disperser_name]
-                t = locals()[disperser_name]
+            for i_disperser, disperser in enumerate(self.disperser_options):
+                disperser_number = self.disperser_options[disperser]
+                t = locals()[disperser]
 
-                self.say(f"# disperser={disperser_name},  iteration {i+1}/{n}")
+                self.say(f"# disperser={disperser},  iteration {i+1}/{n}")
                 self.say(f"kosmos set disperser={disperser_number}")
-                filename = f"{self.prefix}{self.binning_string()}/sci/{disperser_name}"
+                filename = f"{self.prefix}{self.binning_string()}/sci/{disperser}"
                 if note != "":
                     filename += f"-{note}"
                 self.say(
@@ -208,14 +341,14 @@ class ScriptWriter:
     def take_bias(self, n=10):
         self.comment(f"taking {n} bias calibrations")
         self.say(f"kosmos set calstage=in neon=off krypton=off argon=off quartz=off")
-        filename = f"{self.prefix}{self.binning_string()}/cals/bias"
+        filename = f"{self.prefix}/cals/bias-{self.binning_string()}"
         self.say(f'kosmosExpose bias n={n} name="{filename}" seq=nextByDir comment=""')
         self.say()
 
     def take_dark(self, t=120, n=10):
         self.comment(f"taking {n} dark calibrations")
         self.say(f"kosmos set calstage=in neon=off krypton=off argon=off quartz=off")
-        filename = f"{self.prefix}{self.binning_string()}/cals/dark"
+        filename = f"{self.prefix}/cals/dark-{self.binning_string()}"
         self.say(
             f'kosmosExpose dark n={n} time={t:.2f} name="{filename}" seq=nextByDir comment=""'
         )
@@ -241,14 +374,14 @@ class ScriptWriter:
         for i in range(n):
             self.say(f'# iteration {i}, sky')
 
-            for i_disperser, disperser_name in enumerate(self.dispersers):
-                disperser_number = self.dispersers[disperser_name]
+            for i_disperser, disperser in enumerate(self.disperser_options):
+                disperser_number = self.disperser_options[disperser]
                 self.say(f'kosmos set disperser={disperser_number}')
 
                 t = exposure_time
                 self.say(f'''
 kosmos set disperser={disperser_number}
-kosmosExpose flat time={t:.2f} n=1 name="{self.binning[0]}x{self.binning[1]}/sky/{disperser_name}-{what}" seq=nextByDir comment=""'''
+kosmosExpose flat time={t:.2f} n=1 name="{self.binning[0]}x{self.binning[1]}/sky/{disperser}-{what}" seq=nextByDir comment=""'''
                 )
             self.say()
 
@@ -256,7 +389,7 @@ kosmosExpose flat time={t:.2f} n=1 name="{self.binning[0]}x{self.binning[1]}/sky
         for i in range(n):
             self.say(f'# iteration {i}, sky')
 
-            for disperser in self.dispersers:
+            for disperser in self.disperser_options:
                 d = self.disperser_numbers[disperser]
                 t = exposure_time
                 self.say(f'''

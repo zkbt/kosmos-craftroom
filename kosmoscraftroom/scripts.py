@@ -145,16 +145,25 @@ class ScriptWriter:
         note="",
     ):
         """
-        Take calibrations with lamps.
+        Take calibrations with internal lamps.
 
         Parameters
         ----------
         lamp : str
-            The lamp to turn on.
+            The name of the internal lamp to turn on.
+        slit : str, None
+            The name of the slit to use.
+        disperser: str, None
+            The name of the disperser to use.
+        filter1 : str, None
+            The name of filter1 to use.
+        filter2 : str, None
+            The name of filter2 to use.
         n : int
             The number of iterations (per disperser, per slit).
-        note : str
-            An extra note to add to the filename.
+        t : float
+            The exposure time to use. If not provided, a guess will
+            be made based on the suggested times and the slit width.
         """
 
         # turn off all lamps but the active one
@@ -228,14 +237,25 @@ class ScriptWriter:
         note="",
     ):
         """
-        Take calibrations with lamps.
+        Take calibrations with truss lamps.
 
         Parameters
         ----------
         lamp : str
-            The lamp to turn on.
+            The name of the truss lamp to turn on.
+        slit : str, None
+            The name of the slit to use.
+        disperser: str, None
+            The name of the disperser to use.
+        filter1 : str, None
+            The name of filter1 to use.
+        filter2 : str, None
+            The name of filter2 to use.
         n : int
             The number of iterations (per disperser, per slit).
+        t : float
+            The exposure time to use. If not provided, a guess will
+            be made based on the suggested times and the slit width.
         note : str
             An extra note to add to the filename.
         """

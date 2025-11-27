@@ -211,7 +211,14 @@ class ScriptWriter:
         self.say(
             f"kosmos set slit={slit_number} disperser={disperser_number} filter1={filter1_number} filter2={filter2_number}"
         )
-        filename = f"{self.prefix}/cals/internal-{disperser}-{slit}-{lamp}-{self.binning_string()}"
+        filename = f"{self.prefix}cals/internal-{lamp}-{slit}-{disperser}"
+
+        if filter1 != None:
+            filename += f"-{filter1}"
+
+        if filter2 != None:
+            filename += f"-{filter2}"
+
         if note != "":
             filename += f"-{note}"
 
@@ -303,7 +310,13 @@ class ScriptWriter:
         self.say(
             f"kosmos set slit={slit_number} disperser={disperser_number} filter1={filter1_number} filter2={filter2_number}"
         )
-        filename = f"{self.prefix}/cals/truss-{disperser}-{slit}-{lamp}-{self.binning_string()}"
+        filename = f"{self.prefix}cals/truss-{lamp}-{slit}-{disperser}-{slit}"
+        if filter1 != None:
+            filename += f"-{filter1}"
+
+        if filter2 != None:
+            filename += f"-{filter2}"
+
         if note != "":
             filename += f"-{note}"
 
@@ -347,7 +360,7 @@ class ScriptWriter:
 
                 self.say(f"# disperser={disperser},  iteration {i+1}/{n}")
                 self.say(f"kosmos set disperser={disperser_number}")
-                filename = f"{self.prefix}{self.binning_string()}/sci/{disperser}"
+                filename = f"{self.prefix}sci/{disperser}"
                 if note != "":
                     filename += f"-{note}"
                 self.say(
@@ -361,14 +374,14 @@ class ScriptWriter:
     def take_bias(self, n=10):
         self.comment(f"taking {n} bias calibrations")
         self.say(f"kosmos set calstage=in neon=off krypton=off argon=off quartz=off")
-        filename = f"{self.prefix}/cals/bias-{self.binning_string()}"
+        filename = f"{self.prefix}cals/bias"
         self.say(f'kosmosExpose bias n={n} name="{filename}" seq=nextByDir comment=""')
         self.say()
 
     def take_dark(self, t=120, n=10):
         self.comment(f"taking {n} dark calibrations")
         self.say(f"kosmos set calstage=in neon=off krypton=off argon=off quartz=off")
-        filename = f"{self.prefix}/cals/dark-{self.binning_string()}"
+        filename = f"{self.prefix}cals/dark"
         self.say(
             f'kosmosExpose dark n={n} time={t:.2f} name="{filename}" seq=nextByDir comment=""'
         )

@@ -94,6 +94,10 @@ class ScriptWriter:
         self.comment(f"set binning to {self.binning_string()}")
         self.say(f"kosmos set rowBin={self.binning[0]} colBin={self.binning[1]}")
 
+        self.readout = 25
+        self.overhead = 5
+        self.runtime = self.overhead
+
     def __repr__(self):
         return f"<KOSMOS script for {len(self.disperser_options)} dispersers + {len(self.slit_options)} slits>"
 
@@ -211,7 +215,7 @@ class ScriptWriter:
         self.say(
             f"kosmos set slit={slit_number} disperser={disperser_number} filter1={filter1_number} filter2={filter2_number}"
         )
-        filename = f"{self.prefix}cals/internal-{lamp}-{slit}-{disperser}"
+        filename = f"{self.prefix}cals/internal-{lamp}-{slit}-{disperser}-{self.binning_string()}"
 
         if filter1 != None:
             filename += f"-{filter1}"
@@ -231,6 +235,8 @@ class ScriptWriter:
         self.comment("turning off internal lamps")
         self.say(f"kosmos set neon=off krypton=off argon=off quartz=off")
         self.say()
+
+        self.runtime += n * t + self.readout + self.overhead
 
     def take_truss_lamp(
         self,
@@ -310,7 +316,7 @@ class ScriptWriter:
         self.say(
             f"kosmos set slit={slit_number} disperser={disperser_number} filter1={filter1_number} filter2={filter2_number}"
         )
-        filename = f"{self.prefix}cals/truss-{lamp}-{slit}-{disperser}-{slit}"
+        filename = f"{self.prefix}cals/truss-{lamp}-{slit}-{disperser}-{slit}-{self.binning_string()}"
         if filter1 != None:
             filename += f"-{filter1}"
 
@@ -331,6 +337,8 @@ class ScriptWriter:
             self.say(f"tlamps off {truss_lamp_number}")
         self.say()
 
+        self.runtime += n * t + self.readout + self.overhead
+
     def take_science(self, n=3, n_chunk=3, note="", red=10, blue=10):
         """
         Take science exposure.
@@ -346,6 +354,7 @@ class ScriptWriter:
             An extra note to add to the filename.
         """
 
+        raise NotYetImplementedError
         self.lines = []
 
         self.say()
@@ -371,25 +380,31 @@ class ScriptWriter:
         self.copy()
         self.print()
 
+        self.runtime += n * n_chunk * t + self.readout + self.overhead
+
     def take_bias(self, n=10):
         self.comment(f"taking {n} bias calibrations")
         self.say(f"kosmos set calstage=in neon=off krypton=off argon=off quartz=off")
-        filename = f"{self.prefix}cals/bias"
+        filename = f"{self.prefix}cals/bias-{self.binning_string()}"
         self.say(f'kosmosExpose bias n={n} name="{filename}" seq=nextByDir comment=""')
         self.say()
+
+        self.runtime += self.readout + self.overhead
 
     def take_dark(self, t=120, n=10):
         self.comment(f"taking {n} dark calibrations")
         self.say(f"kosmos set calstage=in neon=off krypton=off argon=off quartz=off")
-        filename = f"{self.prefix}cals/dark"
+        filename = f"{self.prefix}cals/dark-{self.binning_string()}"
         self.say(
             f'kosmosExpose dark n={n} time={t:.2f} name="{filename}" seq=nextByDir comment=""'
         )
         self.say()
+        self.runtime += n * t + self.readout + self.overhead
 
     def print(self):
         s = "\n".join(self.lines)
         print(s)
+        print(f"EXPECTED RUNTIME = {self.runtime/3600} hours")
 
     def copy(self):
         s = "\n".join(self.lines)
@@ -400,6 +415,7 @@ class ScriptWriter:
         Please paste into the TUI `Run_Commands` window.
         """
         )
+        print(f"EXPECTED RUNTIME = {self.runtime/3600} hours")
 
 
 """

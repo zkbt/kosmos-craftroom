@@ -215,7 +215,7 @@ class ScriptWriter:
         self.say(
             f"kosmos set slit={slit_number} disperser={disperser_number} filter1={filter1_number} filter2={filter2_number}"
         )
-        filename = f"{self.prefix}cals/internal-{lamp}-{slit}-{disperser}-{self.binning_string()}"
+        filename = f"{self.prefix}cals/internal-{lamp.replace(' ', '')}-{slit}-{disperser}-{self.binning_string()}"
 
         if filter1 != None:
             filename += f"-{filter1}"
@@ -316,7 +316,8 @@ class ScriptWriter:
         self.say(
             f"kosmos set slit={slit_number} disperser={disperser_number} filter1={filter1_number} filter2={filter2_number}"
         )
-        filename = f"{self.prefix}cals/truss-{lamp}-{slit}-{disperser}-{slit}-{self.binning_string()}"
+
+        filename = f"{self.prefix}cals/truss-{lamp.replace(' ', '')}-{slit}-{disperser}-{slit}-{self.binning_string()}"
         if filter1 != None:
             filename += f"-{filter1}"
 
